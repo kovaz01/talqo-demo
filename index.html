@@ -480,8 +480,8 @@
     // Connect socket
     function connectSocket() {
       socket = io(API_BASE, {
-        transports: ['websocket', 'polling'],
-        query: { apiKey: API_KEY }
+        transports: ['websocket'],
+        auth: { apiKey: API_KEY }
       });
 
       socket.on('connect', () => {
@@ -497,7 +497,7 @@
         statusText.textContent = 'Disconnected';
       });
 
-      socket.on('new_message', (msg) => {
+      socket.on('message', (msg) => {
         if (msg.channelId === currentChannelId) {
           messagesDiv.appendChild(renderMessage(msg));
           messagesDiv.scrollTop = messagesDiv.scrollHeight;
