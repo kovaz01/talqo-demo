@@ -317,6 +317,7 @@
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6e7681;margin-bottom:12px;">Embed Code</div>
         <pre style="background:#0d1117;padding:16px;border-radius:8px;overflow-x:auto;font-size:13px;line-height:1.6;color:#c9d1d9;"><code>&lt;script src="https://talqo-api.onrender.com/widget.js"&gt;&lt;/script&gt;
 &lt;script&gt;
+  // Chat mode (explicit channel &amp; user)
   Talqo.init({
     apiKey: 'YOUR_API_KEY',
     channelId: 'YOUR_CHANNEL_ID',
@@ -324,7 +325,30 @@
     theme: 'light',
     position: 'bottom-right'
   })
+
+  // Support mode (auto guest ID &amp; channel)
+  Talqo.init({
+    apiKey: 'YOUR_API_KEY',
+    mode: 'support',
+    theme: 'light'
+  })
 &lt;/script&gt;</code></pre>
+      </div>
+
+      <div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:20px;margin-bottom:24px;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6e7681;margin-bottom:12px;">Widget Mode</div>
+        <div style="display:flex;gap:16px;justify-content:center;align-items:center;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;color:#c9d1d9;">
+            <input type="radio" name="widgetMode" value="chat" checked
+              style="accent-color:#6366f1;width:16px;height:16px;cursor:pointer;">
+            Chat Mode
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;color:#c9d1d9;">
+            <input type="radio" name="widgetMode" value="support"
+              style="accent-color:#059669;width:16px;height:16px;cursor:pointer;">
+            Support Mode
+          </label>
+        </div>
       </div>
 
       <div style="display:flex;gap:12px;justify-content:center;">
@@ -579,27 +603,59 @@
 
     // Widget management
     let widgetLoaded = false;
+    let widgetScriptLoaded = false;
+
+    function getSelectedWidgetMode() {
+      const checked = document.querySelector('input[name="widgetMode"]:checked');
+      return checked ? checked.value : 'chat';
+    }
+
     function launchWidget() {
-      if (!widgetLoaded) {
+      if (widgetLoaded) return;
+
+      function initWidget() {
+        if (!window.Talqo) return;
+
+        const mode = getSelectedWidgetMode();
+        const isSupportMode = mode === 'support';
+
+        const config = {
+          apiKey: API_KEY,
+          serverUrl: API_BASE,
+          theme: 'light',
+          position: 'bottom-right',
+          mode: mode
+        };
+
+        if (!isSupportMode && channels.length > 0) {
+          // Chat mode: use first available channel and explicit user
+          config.channelId = channels[0].id;
+          config.userId = 'widget-visitor';
+          config.userName = 'Widget Visitor';
+        }
+        // Support mode: no channelId (auto-created), no userId (auto-guest)
+
+        window.Talqo.init(config);
+        window.Talqo.open();
+        widgetLoaded = true;
+        document.getElementById('widgetLaunchBtn').style.display = 'none';
+        document.getElementById('widgetDestroyBtn').style.display = 'inline-block';
+
+        if (isSupportMode) {
+          document.getElementById('widgetStatus').textContent = 'Widget active in Support mode (guest)';
+        } else {
+          document.getElementById('widgetStatus').textContent = 'Widget active on #' + (channels.length > 0 ? channels[0].name : 'unknown');
+        }
+      }
+
+      if (widgetScriptLoaded) {
+        initWidget();
+      } else {
         const script = document.createElement('script');
         script.src = API_BASE + '/widget.js';
         script.onload = function() {
-          if (window.Talqo && channels.length > 0) {
-            window.Talqo.init({
-              apiKey: API_KEY,
-              channelId: channels[0].id,
-              serverUrl: API_BASE,
-              userId: 'widget-visitor',
-              userName: 'Widget Visitor',
-              theme: 'light',
-              position: 'bottom-right'
-            });
-            window.Talqo.open();
-            widgetLoaded = true;
-            document.getElementById('widgetLaunchBtn').style.display = 'none';
-            document.getElementById('widgetDestroyBtn').style.display = 'inline-block';
-            document.getElementById('widgetStatus').textContent = 'Widget active on #' + channels[0].name;
-          }
+          widgetScriptLoaded = true;
+          initWidget();
         };
         document.body.appendChild(script);
       }
