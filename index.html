@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Talqo Chat Demo</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"
+          integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO"
+          crossorigin="anonymous"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f1117;
+      color: #e1e4e8;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header .logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 18px;
+      color: white;
+    }
+
+    header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #f0f6fc;
+    }
+
+    header .status {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #8b949e;
+    }
+
+    header .status .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #f85149;
+      transition: background 0.3s;
+    }
+
+    header .status .dot.connected { background: #3fb950; }
+
+    .container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 240px;
+      background: #161b22;
+      border-right: 1px solid #30363d;
+      display: flex;
+      flex-direction: column;
+      padding: 16px 0;
+    }
+
+    .sidebar h3 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #8b949e;
+      padding: 0 16px;
+      margin-bottom: 8px;
+    }
+
+    .channel-list {
+      list-style: none;
+    }
+
+    .channel-list li {
+      padding: 8px 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: #8b949e;
+      transition: all 0.15s;
+    }
+
+    .channel-list li:hover { background: #1c2128; color: #e1e4e8; }
+    .channel-list li.active { background: #1f2937; color: #f0f6fc; }
+    .channel-list li .hash { color: #6366f1; font-weight: bold; }
+
+    .sidebar .info-box {
+      margin-top: auto;
+      padding: 12px 16px;
+      border-top: 1px solid #30363d;
+    }
+
+    .sidebar .info-box p {
+      font-size: 11px;
+      color: #6e7681;
+      line-height: 1.5;
+    }
+
+    .chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-header {
+      padding: 12px 20px;
+      border-bottom: 1px solid #30363d;
+      background: #0d1117;
+    }
+
+    .chat-header h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #f0f6fc;
+    }
+
+    .chat-header p {
+      font-size: 12px;
+      color: #8b949e;
+      margin-top: 2px;
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .message {
+      padding: 8px 12px;
+      border-radius: 6px;
+      max-width: 80%;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message .meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .message .meta .author {
+      font-weight: 600;
+      font-size: 13px;
+      color: #f0f6fc;
+    }
+
+    .message .meta .time {
+      font-size: 11px;
+      color: #6e7681;
+    }
+
+    .message .meta .bot-badge {
+      background: #6366f1;
+      color: white;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+
+    .message .body {
+      font-size: 14px;
+      line-height: 1.5;
+      color: #c9d1d9;
+    }
+
+    .message:hover { background: #161b22; }
+
+    .input-area {
+      padding: 12px 20px;
+      border-top: 1px solid #30363d;
+      background: #0d1117;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .input-row input[type="text"]#username {
+      width: 120px;
+      flex-shrink: 0;
+    }
+
+    .input-row input {
+      flex: 1;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 10px 14px;
+      color: #f0f6fc;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-row input:focus { border-color: #6366f1; }
+    .input-row input::placeholder { color: #6e7681; }
+
+    .input-row button {
+      background: #6366f1;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    .input-row button:hover { background: #5558e6; }
+    .input-row button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .system-msg {
+      text-align: center;
+      font-size: 12px;
+      color: #6e7681;
+      padding: 8px;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .input-row input[type="text"]#username { width: 80px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">T</div>
+    <h1>Talqo Chat Demo</h1>
+    <div class="status">
+      <div class="dot" id="statusDot"></div>
+      <span id="statusText">Disconnected</span>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="sidebar">
+      <h3>Channels</h3>
+      <ul class="channel-list" id="channelList"></ul>
+      <div class="info-box">
+        <p>Talqo Production Demo<br>API: talqo-api.onrender.com<br>Powered by Socket.IO</p>
+      </div>
+    </div>
+
+    <div class="chat-area">
+      <div class="chat-header">
+        <h2 id="channelTitle"># general</h2>
+        <p id="channelDesc">Select a channel to start chatting</p>
+      </div>
+
+      <div class="messages" id="messages">
+        <div class="system-msg">Loading messages...</div>
+      </div>
+
+      <div class="input-area">
+        <div class="input-row">
+          <input type="text" id="username" placeholder="Your name" value="Demo User">
+          <input type="text" id="messageInput" placeholder="Type a message..." disabled>
+          <button id="sendBtn" disabled>Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'https://talqo-api.onrender.com';
+    const API_KEY = 'pk_live_LKlmr4swv3DQW6knTESTp3jXhk2GHrus';
+
+    let socket = null;
+    let currentChannelId = null;
+    let channels = [];
+
+    // DOM elements
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const channelList = document.getElementById('channelList');
+    const channelTitle = document.getElementById('channelTitle');
+    const channelDesc = document.getElementById('channelDesc');
+    const messagesDiv = document.getElementById('messages');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const usernameInput = document.getElementById('username');
+
+    // API helper
+    async function api(path, options = {}) {
+      const res = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': API_KEY,
+          ...(options.headers || {})
+        }
+      });
+      return res.json();
+    }
+
+    // Format timestamp
+    function formatTime(ts) {
+      const d = new Date(ts);
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // Render a message (XSS-safe: uses textContent, not innerHTML)
+    function renderMessage(msg) {
+      const div = document.createElement('div');
+      div.className = 'message';
+
+      const isBot = msg.metadata?.isBot;
+      const author = isBot ? (msg.metadata.botName || 'Bot') : (msg.userId || 'Anonymous');
+
+      const metaDiv = document.createElement('div');
+      metaDiv.className = 'meta';
+
+      const authorSpan = document.createElement('span');
+      authorSpan.className = 'author';
+      authorSpan.textContent = author;
+      metaDiv.appendChild(authorSpan);
+
+      if (isBot) {
+        const badgeSpan = document.createElement('span');
+        badgeSpan.className = 'bot-badge';
+        badgeSpan.textContent = 'BOT';
+        metaDiv.appendChild(badgeSpan);
+      }
+
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'time';
+      timeSpan.textContent = formatTime(msg.createdAt);
+      metaDiv.appendChild(timeSpan);
+
+      const bodyDiv = document.createElement('div');
+      bodyDiv.className = 'body';
+      bodyDiv.textContent = msg.content;
+
+      div.appendChild(metaDiv);
+      div.appendChild(bodyDiv);
+      return div;
+    }
+
+    // Load channels
+    async function loadChannels() {
+      const res = await api('/api/v1/channels');
+      if (res.success) {
+        channels = res.data;
+        channelList.replaceChildren();
+        channels.forEach(ch => {
+          const li = document.createElement('li');
+          const hashSpan = document.createElement('span');
+          hashSpan.className = 'hash';
+          hashSpan.textContent = '#';
+          li.appendChild(hashSpan);
+          li.appendChild(document.createTextNode(' ' + ch.name));
+          li.dataset.id = ch.id;
+          li.dataset.name = ch.name;
+          li.dataset.desc = ch.description || '';
+          li.onclick = () => selectChannel(ch.id, ch.name, ch.description);
+          channelList.appendChild(li);
+        });
+        // Auto-select first channel
+        if (channels.length > 0) {
+          selectChannel(channels[0].id, channels[0].name, channels[0].description);
+        }
+      }
+    }
+
+    // Helper to create a system message element
+    function createSystemMsg(text) {
+      const el = document.createElement('div');
+      el.className = 'system-msg';
+      el.textContent = text;
+      return el;
+    }
+
+    // Load messages for a channel
+    async function loadMessages(channelId) {
+      messagesDiv.replaceChildren(createSystemMsg('Loading messages...'));
+      const res = await api(`/api/v1/channels/${channelId}/messages`);
+      messagesDiv.replaceChildren();
+      if (res.success && res.data.length > 0) {
+        res.data.forEach(msg => messagesDiv.appendChild(renderMessage(msg)));
+      } else {
+        messagesDiv.appendChild(createSystemMsg('No messages yet. Be the first to say something!'));
+      }
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    // Select channel
+    function selectChannel(id, name, desc) {
+      currentChannelId = id;
+      channelTitle.textContent = `# ${name}`;
+      channelDesc.textContent = desc || 'Chat channel';
+      messageInput.disabled = false;
+      sendBtn.disabled = false;
+
+      // Highlight active channel
+      document.querySelectorAll('.channel-list li').forEach(li => {
+        li.classList.toggle('active', li.dataset.id === id);
+      });
+
+      loadMessages(id);
+
+      // Join channel via socket
+      if (socket && socket.connected) {
+        socket.emit('join_channel', { channelId: id });
+      }
+    }
+
+    // Send message
+    async function sendMessage() {
+      const content = messageInput.value.trim();
+      const username = usernameInput.value.trim() || 'Anonymous';
+      if (!content || !currentChannelId) return;
+
+      messageInput.value = '';
+      sendBtn.disabled = true;
+
+      try {
+        const res = await api(`/api/v1/channels/${currentChannelId}/messages`, {
+          method: 'POST',
+          body: JSON.stringify({
+            content,
+            userId: username.toLowerCase().replace(/\s+/g, '-'),
+            senderName: username
+          })
+        });
+
+        if (res.success) {
+          messagesDiv.appendChild(renderMessage(res.data));
+          messagesDiv.scrollTop = messagesDiv.scrollHeight;
+          // Remove "no messages" placeholder
+          const placeholder = messagesDiv.querySelector('.system-msg');
+          if (placeholder) placeholder.remove();
+        }
+      } catch (err) {
+        console.error('Send failed:', err);
+      }
+
+      sendBtn.disabled = false;
+      messageInput.focus();
+    }
+
+    // Connect socket
+    function connectSocket() {
+      socket = io(API_BASE, {
+        transports: ['websocket', 'polling'],
+        query: { apiKey: API_KEY }
+      });
+
+      socket.on('connect', () => {
+        statusDot.classList.add('connected');
+        statusText.textContent = 'Connected';
+        if (currentChannelId) {
+          socket.emit('join_channel', { channelId: currentChannelId });
+        }
+      });
+
+      socket.on('disconnect', () => {
+        statusDot.classList.remove('connected');
+        statusText.textContent = 'Disconnected';
+      });
+
+      socket.on('new_message', (msg) => {
+        if (msg.channelId === currentChannelId) {
+          messagesDiv.appendChild(renderMessage(msg));
+          messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+      });
+
+      socket.on('connect_error', (err) => {
+        statusText.textContent = 'Connection error';
+        console.error('Socket error:', err);
+      });
+    }
+
+    // Event listeners
+    sendBtn.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+
+    // Initialize
+    loadChannels();
+    connectSocket();
+  </script>
+</body>
+</html>
