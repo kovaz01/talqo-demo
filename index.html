@@ -265,6 +265,10 @@
   <header>
     <div class="logo">T</div>
     <h1>Talqo Chat Demo</h1>
+    <div style="display:flex;gap:4px;margin-left:24px;">
+      <button onclick="showView('chat')" id="tabChat" style="padding:6px 14px;border-radius:6px;border:1px solid #30363d;background:#1f2937;color:#f0f6fc;font-size:13px;cursor:pointer;font-weight:600;">Custom Chat</button>
+      <button onclick="showView('widget')" id="tabWidget" style="padding:6px 14px;border-radius:6px;border:1px solid #30363d;background:transparent;color:#8b949e;font-size:13px;cursor:pointer;">Widget Demo</button>
+    </div>
     <div class="status">
       <div class="dot" id="statusDot"></div>
       <span id="statusText">Disconnected</span>
@@ -297,6 +301,37 @@
           <button id="sendBtn" disabled>Send</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Widget Demo View -->
+  <div id="widgetView" style="display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;padding:40px;text-align:center;">
+    <div style="max-width:600px;">
+      <h2 style="font-size:28px;font-weight:700;color:#f0f6fc;margin-bottom:12px;">Talqo Embeddable Widget</h2>
+      <p style="color:#8b949e;font-size:16px;line-height:1.6;margin-bottom:32px;">
+        This is the drop-in chat widget that your customers can add to any website with a single script tag.
+        Click the chat bubble in the bottom-right corner to try it.
+      </p>
+
+      <div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;text-align:left;margin-bottom:24px;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6e7681;margin-bottom:12px;">Embed Code</div>
+        <pre style="background:#0d1117;padding:16px;border-radius:8px;overflow-x:auto;font-size:13px;line-height:1.6;color:#c9d1d9;"><code>&lt;script src="https://talqo-api.onrender.com/widget.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  Talqo.init({
+    apiKey: 'YOUR_API_KEY',
+    channelId: 'YOUR_CHANNEL_ID',
+    userId: 'visitor-123',
+    theme: 'light',
+    position: 'bottom-right'
+  })
+&lt;/script&gt;</code></pre>
+      </div>
+
+      <div style="display:flex;gap:12px;justify-content:center;">
+        <button onclick="launchWidget()" id="widgetLaunchBtn" style="padding:10px 24px;background:#6366f1;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Launch Widget</button>
+        <button onclick="destroyWidget()" id="widgetDestroyBtn" style="padding:10px 24px;background:#1e293b;color:#94a3b8;border:1px solid #30363d;border-radius:8px;font-size:14px;cursor:pointer;display:none;">Destroy Widget</button>
+      </div>
+      <p id="widgetStatus" style="margin-top:16px;font-size:13px;color:#6e7681;"></p>
     </div>
   </div>
 
@@ -513,6 +548,72 @@
     messageInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') sendMessage();
     });
+
+    // View toggle
+    function showView(view) {
+      const chatView = document.querySelector('.container');
+      const widgetViewEl = document.getElementById('widgetView');
+      const tabChat = document.getElementById('tabChat');
+      const tabWidget = document.getElementById('tabWidget');
+
+      if (view === 'widget') {
+        chatView.style.display = 'none';
+        widgetViewEl.style.display = 'flex';
+        tabChat.style.background = 'transparent';
+        tabChat.style.color = '#8b949e';
+        tabChat.style.fontWeight = 'normal';
+        tabWidget.style.background = '#1f2937';
+        tabWidget.style.color = '#f0f6fc';
+        tabWidget.style.fontWeight = '600';
+      } else {
+        chatView.style.display = 'flex';
+        widgetViewEl.style.display = 'none';
+        tabChat.style.background = '#1f2937';
+        tabChat.style.color = '#f0f6fc';
+        tabChat.style.fontWeight = '600';
+        tabWidget.style.background = 'transparent';
+        tabWidget.style.color = '#8b949e';
+        tabWidget.style.fontWeight = 'normal';
+      }
+    }
+
+    // Widget management
+    let widgetLoaded = false;
+    function launchWidget() {
+      if (!widgetLoaded) {
+        const script = document.createElement('script');
+        script.src = API_BASE + '/widget.js';
+        script.onload = function() {
+          if (window.Talqo && channels.length > 0) {
+            window.Talqo.init({
+              apiKey: API_KEY,
+              channelId: channels[0].id,
+              serverUrl: API_BASE,
+              userId: 'widget-visitor',
+              userName: 'Widget Visitor',
+              theme: 'light',
+              position: 'bottom-right'
+            });
+            window.Talqo.open();
+            widgetLoaded = true;
+            document.getElementById('widgetLaunchBtn').style.display = 'none';
+            document.getElementById('widgetDestroyBtn').style.display = 'inline-block';
+            document.getElementById('widgetStatus').textContent = 'Widget active on #' + channels[0].name;
+          }
+        };
+        document.body.appendChild(script);
+      }
+    }
+
+    function destroyWidget() {
+      if (window.Talqo) {
+        window.Talqo.destroy();
+        widgetLoaded = false;
+        document.getElementById('widgetLaunchBtn').style.display = 'inline-block';
+        document.getElementById('widgetDestroyBtn').style.display = 'none';
+        document.getElementById('widgetStatus').textContent = 'Widget destroyed';
+      }
+    }
 
     // Initialize
     loadChannels();
