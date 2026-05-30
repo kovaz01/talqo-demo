@@ -255,7 +255,57 @@
       padding: 8px;
     }
 
+    /* Presence (online users) */
+    .online-bar {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .online-bar .online-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #3fb950;
+      box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.18);
+    }
+
+    .online-bar .online-count {
+      font-size: 12px;
+      color: #8b949e;
+      white-space: nowrap;
+    }
+
+    .online-avatars {
+      display: flex;
+      align-items: center;
+    }
+
+    .online-avatars .online-avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      margin-left: -6px;
+      border: 2px solid #0d1117;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
+      text-transform: uppercase;
+    }
+
+    .online-avatars .online-avatar:first-child { margin-left: 0; }
+    .online-avatars .online-avatar.more {
+      background: #30363d;
+      color: #c9d1d9;
+      font-size: 10px;
+    }
+
     @media (max-width: 768px) {
+      .online-avatars { display: none; }
       .sidebar { display: none; }
       .input-row input[type="text"]#username { width: 80px; }
     }
@@ -280,14 +330,21 @@
       <h3>Channels</h3>
       <ul class="channel-list" id="channelList"></ul>
       <div class="info-box">
-        <p>Talqo Production Demo<br>API: talqo-api.onrender.com<br>Powered by Socket.IO</p>
+        <p>Talqo Production Demo<br>API: talqo-api.onrender.com<br>Powered by Socket.IO<br><br>Tip: open this page in a second tab (or share it) — everyone shows up in the <strong>online</strong> bar of public channels.</p>
       </div>
     </div>
 
     <div class="chat-area">
-      <div class="chat-header">
-        <h2 id="channelTitle"># general</h2>
-        <p id="channelDesc">Select a channel to start chatting</p>
+      <div class="chat-header" style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+        <div>
+          <h2 id="channelTitle"># general</h2>
+          <p id="channelDesc">Select a channel to start chatting</p>
+        </div>
+        <div class="online-bar" id="onlineBar" title="People online in this channel">
+          <span class="online-dot"></span>
+          <span class="online-count" id="onlineCount">0 online</span>
+          <div class="online-avatars" id="onlineAvatars"></div>
+        </div>
       </div>
 
       <div class="messages" id="messages">
@@ -366,6 +423,9 @@
     let socket = null;
     let currentChannelId = null;
     let channels = [];
+    let onlineUsers = [];
+    // Stable per-tab identity so multiple tabs each count as a distinct online user.
+    const GUEST_ID = 'guest-' + Math.random().toString(36).slice(2, 8);
 
     // DOM elements
     const statusDot = document.getElementById('statusDot');
@@ -395,6 +455,51 @@
     function formatTime(ts) {
       const d = new Date(ts);
       return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // --- Presence (online users) ---
+    // Join payload carries identity so the server can track presence in public channels.
+    function joinPayload(channelId) {
+      return {
+        channelId,
+        userId: GUEST_ID,
+        displayName: usernameInput.value.trim() || 'Guest'
+      };
+    }
+
+    // Deterministic avatar color from a name.
+    function colorFor(name) {
+      let hash = 0;
+      for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      return `hsl(${Math.abs(hash) % 360}, 55%, 45%)`;
+    }
+
+    function renderOnline() {
+      const bar = document.getElementById('onlineBar');
+      if (!onlineUsers.length) {
+        bar.style.display = 'none';
+        return;
+      }
+      bar.style.display = 'flex';
+      document.getElementById('onlineCount').textContent = `${onlineUsers.length} online`;
+
+      const avatars = document.getElementById('onlineAvatars');
+      avatars.replaceChildren();
+      onlineUsers.slice(0, 6).forEach(u => {
+        const name = u.displayName || u.userId;
+        const a = document.createElement('div');
+        a.className = 'online-avatar';
+        a.title = name;
+        a.textContent = name.charAt(0);
+        a.style.background = colorFor(name);
+        avatars.appendChild(a);
+      });
+      if (onlineUsers.length > 6) {
+        const more = document.createElement('div');
+        more.className = 'online-avatar more';
+        more.textContent = '+' + (onlineUsers.length - 6);
+        avatars.appendChild(more);
+      }
     }
 
     // Render a message (XSS-safe: uses textContent, not innerHTML)
@@ -496,9 +601,13 @@
 
       loadMessages(id);
 
-      // Join channel via socket
+      // Reset presence for the newly selected channel
+      onlineUsers = [];
+      renderOnline();
+
+      // Join channel via socket (with identity so presence is tracked)
       if (socket && socket.connected) {
-        socket.emit('join_channel', { channelId: id });
+        socket.emit('join_channel', joinPayload(id));
       }
     }
 
@@ -543,7 +652,7 @@
         statusDot.classList.add('connected');
         statusText.textContent = 'Connected';
         if (currentChannelId) {
-          socket.emit('join_channel', { channelId: currentChannelId });
+          socket.emit('join_channel', joinPayload(currentChannelId));
         }
       });
 
@@ -561,6 +670,27 @@
         }
       });
 
+      // Presence: snapshot on join + incremental online/offline (public channels only)
+      socket.on('presence', ({ channelId, users }) => {
+        if (channelId !== currentChannelId) return;
+        onlineUsers = users || [];
+        renderOnline();
+      });
+
+      socket.on('user_online', ({ channelId, userId, displayName }) => {
+        if (channelId !== currentChannelId) return;
+        const existing = onlineUsers.find(u => u.userId === userId);
+        if (existing) existing.displayName = displayName;
+        else onlineUsers.push({ userId, displayName });
+        renderOnline();
+      });
+
+      socket.on('user_offline', ({ channelId, userId }) => {
+        if (channelId !== currentChannelId) return;
+        onlineUsers = onlineUsers.filter(u => u.userId !== userId);
+        renderOnline();
+      });
+
       socket.on('connect_error', (err) => {
         statusText.textContent = 'Connection error';
         console.error('Socket error:', err);
@@ -571,6 +701,13 @@
     sendBtn.addEventListener('click', sendMessage);
     messageInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') sendMessage();
+    });
+
+    // Updating your name re-broadcasts presence so others see the new display name
+    usernameInput.addEventListener('change', () => {
+      if (socket && socket.connected && currentChannelId) {
+        socket.emit('join_channel', joinPayload(currentChannelId));
+      }
     });
 
     // View toggle
