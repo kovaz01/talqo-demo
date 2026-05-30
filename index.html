@@ -462,12 +462,8 @@
           })
         });
 
-        if (res.success) {
-          messagesDiv.appendChild(renderMessage(res.data));
-          messagesDiv.scrollTop = messagesDiv.scrollHeight;
-          // Remove "no messages" placeholder
-          const placeholder = messagesDiv.querySelector('.system-msg');
-          if (placeholder) placeholder.remove();
+        if (!res.success) {
+          console.error('Send failed:', res.error);
         }
       } catch (err) {
         console.error('Send failed:', err);
@@ -499,6 +495,8 @@
 
       socket.on('message', (msg) => {
         if (msg.channelId === currentChannelId) {
+          const placeholder = messagesDiv.querySelector('.system-msg');
+          if (placeholder) placeholder.remove();
           messagesDiv.appendChild(renderMessage(msg));
           messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
