@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Talqo Widget Demo — Drop-in Chat & Support</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f1117; color: #e1e4e8;
+      min-height: 100vh; padding: 40px 24px;
+    }
+    .container { max-width: 700px; margin: 0 auto; }
+
+    h1 { font-size: 32px; font-weight: 700; color: #f0f6fc; margin-bottom: 8px; }
+    h1 span { color: #6366f1; }
+    .subtitle { font-size: 16px; color: #8b949e; line-height: 1.6; margin-bottom: 32px; }
+
+    .card {
+      background: #161b22; border: 1px solid #30363d;
+      border-radius: 12px; padding: 24px; margin-bottom: 24px;
+    }
+    .card h2 { font-size: 16px; font-weight: 600; color: #f0f6fc; margin-bottom: 16px; }
+    .card p { font-size: 13px; color: #8b949e; line-height: 1.6; margin-bottom: 12px; }
+
+    .code-block {
+      background: #0d1117; border-radius: 8px; padding: 16px;
+      font-family: 'SF Mono', Monaco, monospace; font-size: 13px;
+      color: #c9d1d9; overflow-x: auto; line-height: 1.6;
+      white-space: pre;
+    }
+    .code-block .comment { color: #6e7681; }
+    .code-block .string { color: #a5d6ff; }
+    .code-block .keyword { color: #ff7b72; }
+
+    .btn-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    button {
+      padding: 10px 20px; border-radius: 8px; font-size: 14px;
+      font-weight: 500; cursor: pointer; border: none; transition: all 0.2s;
+    }
+    .btn-primary { background: #6366f1; color: white; }
+    .btn-primary:hover { background: #5558e6; }
+    .btn-support { background: #059669; color: white; }
+    .btn-support:hover { background: #047857; }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-secondary { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
+    .btn-secondary:hover { background: #334155; color: #e2e8f0; }
+
+    .status-msg {
+      margin-top: 16px; font-size: 13px; color: #6e7681;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .status-msg .dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #6e7681;
+    }
+    .status-msg .dot.active { background: #3fb950; }
+
+    .divider { height: 1px; background: #30363d; margin: 32px 0; }
+
+    .mode-toggle {
+      display: flex; gap: 4px; background: #0d1117;
+      border-radius: 8px; padding: 4px; margin-bottom: 16px;
+    }
+    .mode-toggle button {
+      flex: 1; padding: 8px 16px; border-radius: 6px;
+      font-size: 13px; background: transparent; color: #8b949e;
+    }
+    .mode-toggle button.active { background: #1f2937; color: #f0f6fc; font-weight: 600; }
+
+    a { color: #6366f1; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Talqo <span>Widget</span></h1>
+    <p class="subtitle">
+      Add chat or support to any website with a single script tag.
+      No framework required — works on any HTML page.
+    </p>
+
+    <!-- Mode selection -->
+    <div class="card">
+      <h2>Choose a mode</h2>
+      <div class="mode-toggle">
+        <button class="active" onclick="setMode('chat')" id="modeChat">💬 Chat Mode</button>
+        <button onclick="setMode('support')" id="modeSupport">🎧 Support Mode</button>
+      </div>
+
+      <div id="chatDesc">
+        <p><strong>Chat Mode</strong> — Connect to a specific channel. Shows message history.
+        Best for community chat, team channels, or in-app messaging.</p>
+      </div>
+      <div id="supportDesc" style="display:none">
+        <p><strong>Support Mode</strong> — Auto-creates a private 1:1 conversation.
+        Collects visitor name via pre-chat form. Conversations appear in your
+        <a href="https://talqo.live/dashboard/support" target="_blank">dashboard inbox</a>.</p>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-primary" onclick="launchWidget()" id="launchBtn">Launch Widget</button>
+        <button class="btn-danger" onclick="destroyWidget()" id="destroyBtn" style="display:none">Destroy Widget</button>
+      </div>
+
+      <div class="status-msg" id="widgetStatus">
+        <div class="dot"></div>
+        <span>Click "Launch Widget" to try it</span>
+      </div>
+    </div>
+
+    <!-- Embed code -->
+    <div class="card">
+      <h2>Embed Code</h2>
+      <p>Copy this into your HTML — that's it. No build tools needed.</p>
+
+      <div id="chatCode">
+        <div class="code-block"><span class="comment">// Chat mode — connect to a specific channel</span>
+<span class="keyword">&lt;script</span> src="https://talqo-api.onrender.com/widget.js"<span class="keyword">&gt;&lt;/script&gt;</span>
+<span class="keyword">&lt;script&gt;</span>
+  Talqo.init({
+    apiKey: <span class="string">'YOUR_API_KEY'</span>,
+    channelId: <span class="string">'YOUR_CHANNEL_ID'</span>,
+    userId: <span class="string">'user-123'</span>,
+    userName: <span class="string">'John Doe'</span>,
+    theme: <span class="string">'light'</span>,
+    position: <span class="string">'bottom-right'</span>
+  })
+<span class="keyword">&lt;/script&gt;</span></div>
+      </div>
+
+      <div id="supportCode" style="display:none">
+        <div class="code-block"><span class="comment">// Support mode — auto-creates private conversation</span>
+<span class="keyword">&lt;script</span> src="https://talqo-api.onrender.com/widget.js"<span class="keyword">&gt;&lt;/script&gt;</span>
+<span class="keyword">&lt;script&gt;</span>
+  Talqo.init({
+    apiKey: <span class="string">'YOUR_API_KEY'</span>,
+    mode: <span class="string">'support'</span>,
+    position: <span class="string">'bottom-right'</span>
+  })
+  <span class="comment">// Visitor enters name via pre-chat form</span>
+  <span class="comment">// Conversation appears in your dashboard</span>
+<span class="keyword">&lt;/script&gt;</span></div>
+      </div>
+    </div>
+
+    <!-- How it works -->
+    <div class="card">
+      <h2>How it works</h2>
+      <p>1. The widget script loads from your Talqo API server</p>
+      <p>2. <code>Talqo.init()</code> creates a Web Component with Shadow DOM (isolated styles)</p>
+      <p>3. Connects via WebSocket for real-time messaging</p>
+      <p>4. In support mode: collects visitor name → creates private channel → agent sees it in dashboard</p>
+      <p style="margin-top: 12px;">
+        <a href="https://talqo.live/docs" target="_blank">Full widget documentation →</a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'https://talqo-api.onrender.com'
+    const API_KEY = 'pk_live_LKlmr4swv3DQW6knTESTp3jXhk2GHrus'
+
+    let currentMode = 'chat'
+    let widgetLoaded = false
+    let scriptLoaded = false
+    let channels = []
+
+    function setMode(mode) {
+      currentMode = mode
+      document.getElementById('modeChat').className = mode === 'chat' ? 'active' : ''
+      document.getElementById('modeSupport').className = mode === 'support' ? 'active' : ''
+      document.getElementById('chatDesc').style.display = mode === 'chat' ? 'block' : 'none'
+      document.getElementById('supportDesc').style.display = mode === 'support' ? 'block' : 'none'
+      document.getElementById('chatCode').style.display = mode === 'chat' ? 'block' : 'none'
+      document.getElementById('supportCode').style.display = mode === 'support' ? 'block' : 'none'
+    }
+
+    function setStatus(text, active) {
+      const el = document.getElementById('widgetStatus')
+      el.querySelector('span').textContent = text
+      el.querySelector('.dot').className = 'dot' + (active ? ' active' : '')
+    }
+
+    async function loadChannels() {
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/channels?limit=5`, {
+          headers: { 'x-api-key': API_KEY }
+        })
+        const data = await res.json()
+        if (data.success) channels = data.data
+      } catch (e) { /* ignore */ }
+    }
+
+    function launchWidget() {
+      if (widgetLoaded) destroyWidget()
+
+      function initWidget() {
+        const config = currentMode === 'support'
+          ? { apiKey: API_KEY, mode: 'support', serverUrl: API_BASE, position: 'bottom-right' }
+          : {
+              apiKey: API_KEY, mode: 'chat', serverUrl: API_BASE,
+              channelId: channels.length > 0 ? channels[0].id : undefined,
+              userId: 'demo-visitor', userName: 'Demo Visitor',
+              position: 'bottom-right'
+            }
+
+        window.Talqo.init(config)
+        window.Talqo.open()
+        widgetLoaded = true
+
+        document.getElementById('launchBtn').style.display = 'none'
+        document.getElementById('destroyBtn').style.display = 'inline-block'
+        setStatus(`Widget active (${currentMode} mode)`, true)
+      }
+
+      if (!scriptLoaded) {
+        const s = document.createElement('script')
+        s.src = API_BASE + '/widget.js'
+        s.onload = () => { scriptLoaded = true; initWidget() }
+        document.body.appendChild(s)
+      } else {
+        initWidget()
+      }
+    }
+
+    function destroyWidget() {
+      if (window.Talqo) window.Talqo.destroy()
+      document.querySelectorAll('talqo-widget').forEach(el => el.remove())
+      widgetLoaded = false
+      document.getElementById('launchBtn').style.display = 'inline-block'
+      document.getElementById('destroyBtn').style.display = 'none'
+      setStatus('Widget destroyed', false)
+    }
+
+    loadChannels()
+  </script>
+</body>
+</html>

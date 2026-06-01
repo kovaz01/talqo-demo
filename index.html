@@ -3,814 +3,118 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Talqo Chat Demo</title>
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"
-          integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO"
-          crossorigin="anonymous"></script>
+  <title>Talqo Demos — Chat Integration Examples</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0f1117;
-      color: #e1e4e8;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
+      background: #0f1117; color: #e1e4e8;
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 40px 24px;
     }
+    .container { max-width: 800px; width: 100%; }
 
-    header {
-      background: #161b22;
-      border-bottom: 1px solid #30363d;
-      padding: 16px 24px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    header .logo {
-      width: 36px;
-      height: 36px;
+    .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+    .logo .icon {
+      width: 44px; height: 44px;
       background: linear-gradient(135deg, #6366f1, #8b5cf6);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      font-size: 18px;
-      color: white;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: bold; font-size: 22px; color: white;
     }
+    .logo h1 { font-size: 28px; color: #f0f6fc; }
+    .logo span { color: #8b949e; font-size: 16px; font-weight: 400; margin-left: 4px; }
 
-    header h1 {
-      font-size: 20px;
-      font-weight: 600;
-      color: #f0f6fc;
+    p.intro { font-size: 16px; color: #8b949e; line-height: 1.7; margin-bottom: 40px; max-width: 600px; }
+
+    .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 640px) { .cards { grid-template-columns: 1fr; } }
+
+    .card {
+      background: #161b22; border: 1px solid #30363d;
+      border-radius: 16px; padding: 28px;
+      transition: border-color 0.2s, transform 0.2s;
+      text-decoration: none; color: inherit; display: block;
     }
+    .card:hover { border-color: #6366f1; transform: translateY(-2px); }
 
-    header .status {
-      margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      color: #8b949e;
+    .card .badge {
+      display: inline-block;
+      padding: 4px 12px; border-radius: 20px;
+      font-size: 11px; font-weight: 600; margin-bottom: 16px;
     }
+    .card.api .badge { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.25); }
+    .card.widget .badge { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.25); }
 
-    header .status .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #f85149;
-      transition: background 0.3s;
+    .card h2 { font-size: 20px; font-weight: 600; color: #f0f6fc; margin-bottom: 8px; }
+    .card p { font-size: 14px; color: #8b949e; line-height: 1.6; margin-bottom: 16px; }
+
+    .card .features { list-style: none; margin-bottom: 20px; }
+    .card .features li {
+      font-size: 13px; color: #6e7681; padding: 4px 0;
+      display: flex; align-items: center; gap: 8px;
     }
+    .card .features li::before { content: '✓'; color: #3fb950; font-weight: bold; }
 
-    header .status .dot.connected { background: #3fb950; }
-
-    .container {
-      display: flex;
-      flex: 1;
-      overflow: hidden;
+    .card .cta {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 14px; font-weight: 600; color: #6366f1;
     }
+    .card .cta::after { content: '→'; }
 
-    .sidebar {
-      width: 240px;
-      background: #161b22;
-      border-right: 1px solid #30363d;
-      display: flex;
-      flex-direction: column;
-      padding: 16px 0;
+    .footer {
+      margin-top: 40px; text-align: center;
+      font-size: 13px; color: #6e7681;
     }
-
-    .sidebar h3 {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #8b949e;
-      padding: 0 16px;
-      margin-bottom: 8px;
-    }
-
-    .channel-list {
-      list-style: none;
-    }
-
-    .channel-list li {
-      padding: 8px 16px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      color: #8b949e;
-      transition: all 0.15s;
-    }
-
-    .channel-list li:hover { background: #1c2128; color: #e1e4e8; }
-    .channel-list li.active { background: #1f2937; color: #f0f6fc; }
-    .channel-list li .hash { color: #6366f1; font-weight: bold; }
-
-    .sidebar .info-box {
-      margin-top: auto;
-      padding: 12px 16px;
-      border-top: 1px solid #30363d;
-    }
-
-    .sidebar .info-box p {
-      font-size: 11px;
-      color: #6e7681;
-      line-height: 1.5;
-    }
-
-    .chat-area {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .chat-header {
-      padding: 12px 20px;
-      border-bottom: 1px solid #30363d;
-      background: #0d1117;
-    }
-
-    .chat-header h2 {
-      font-size: 16px;
-      font-weight: 600;
-      color: #f0f6fc;
-    }
-
-    .chat-header p {
-      font-size: 12px;
-      color: #8b949e;
-      margin-top: 2px;
-    }
-
-    .messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .message {
-      padding: 8px 12px;
-      border-radius: 6px;
-      max-width: 80%;
-      animation: fadeIn 0.2s ease;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .message .meta {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 4px;
-    }
-
-    .message .meta .author {
-      font-weight: 600;
-      font-size: 13px;
-      color: #f0f6fc;
-    }
-
-    .message .meta .time {
-      font-size: 11px;
-      color: #6e7681;
-    }
-
-    .message .meta .bot-badge {
-      background: #6366f1;
-      color: white;
-      font-size: 10px;
-      padding: 1px 6px;
-      border-radius: 3px;
-      font-weight: 600;
-    }
-
-    .message .body {
-      font-size: 14px;
-      line-height: 1.5;
-      color: #c9d1d9;
-    }
-
-    .message:hover { background: #161b22; }
-
-    .input-area {
-      padding: 12px 20px;
-      border-top: 1px solid #30363d;
-      background: #0d1117;
-    }
-
-    .input-row {
-      display: flex;
-      gap: 8px;
-    }
-
-    .input-row input[type="text"]#username {
-      width: 120px;
-      flex-shrink: 0;
-    }
-
-    .input-row input {
-      flex: 1;
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      padding: 10px 14px;
-      color: #f0f6fc;
-      font-size: 14px;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    .input-row input:focus { border-color: #6366f1; }
-    .input-row input::placeholder { color: #6e7681; }
-
-    .input-row button {
-      background: #6366f1;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      padding: 10px 20px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s;
-      white-space: nowrap;
-    }
-
-    .input-row button:hover { background: #5558e6; }
-    .input-row button:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .system-msg {
-      text-align: center;
-      font-size: 12px;
-      color: #6e7681;
-      padding: 8px;
-    }
-
-    /* Presence (online users) */
-    .online-bar {
-      display: none;
-      align-items: center;
-      gap: 10px;
-      flex-shrink: 0;
-    }
-
-    .online-bar .online-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #3fb950;
-      box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.18);
-    }
-
-    .online-bar .online-count {
-      font-size: 12px;
-      color: #8b949e;
-      white-space: nowrap;
-    }
-
-    .online-avatars {
-      display: flex;
-      align-items: center;
-    }
-
-    .online-avatars .online-avatar {
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      margin-left: -6px;
-      border: 2px solid #0d1117;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      font-weight: 700;
-      color: #fff;
-      text-transform: uppercase;
-    }
-
-    .online-avatars .online-avatar:first-child { margin-left: 0; }
-    .online-avatars .online-avatar.more {
-      background: #30363d;
-      color: #c9d1d9;
-      font-size: 10px;
-    }
-
-    @media (max-width: 768px) {
-      .online-avatars { display: none; }
-      .sidebar { display: none; }
-      .input-row input[type="text"]#username { width: 80px; }
-    }
+    .footer a { color: #6366f1; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <header>
-    <div class="logo">T</div>
-    <h1>Talqo Chat Demo</h1>
-    <div style="display:flex;gap:4px;margin-left:24px;">
-      <button onclick="showView('chat')" id="tabChat" style="padding:6px 14px;border-radius:6px;border:1px solid #30363d;background:#1f2937;color:#f0f6fc;font-size:13px;cursor:pointer;font-weight:600;">Custom Chat</button>
-      <button onclick="showView('widget')" id="tabWidget" style="padding:6px 14px;border-radius:6px;border:1px solid #30363d;background:transparent;color:#8b949e;font-size:13px;cursor:pointer;">Widget Demo</button>
-    </div>
-    <div class="status">
-      <div class="dot" id="statusDot"></div>
-      <span id="statusText">Disconnected</span>
-    </div>
-  </header>
-
   <div class="container">
-    <div class="sidebar">
-      <h3>Channels</h3>
-      <ul class="channel-list" id="channelList"></ul>
-      <div class="info-box">
-        <p>Talqo Production Demo<br>API: talqo-api.onrender.com<br>Powered by Socket.IO<br><br>Tip: open this page in a second tab (or share it) — everyone shows up in the <strong>online</strong> bar of public channels.</p>
-      </div>
+    <div class="logo">
+      <div class="icon">T</div>
+      <h1>Talqo <span>Demos</span></h1>
     </div>
 
-    <div class="chat-area">
-      <div class="chat-header" style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
-        <div>
-          <h2 id="channelTitle"># general</h2>
-          <p id="channelDesc">Select a channel to start chatting</p>
-        </div>
-        <div class="online-bar" id="onlineBar" title="People online in this channel">
-          <span class="online-dot"></span>
-          <span class="online-count" id="onlineCount">0 online</span>
-          <div class="online-avatars" id="onlineAvatars"></div>
-        </div>
-      </div>
+    <p class="intro">
+      Two ways to integrate Talqo chat. Pick the approach that fits your use case — or use both.
+    </p>
 
-      <div class="messages" id="messages">
-        <div class="system-msg">Loading messages...</div>
-      </div>
+    <div class="cards">
+      <a href="custom-chat/" class="card api">
+        <div class="badge">API + WebSocket</div>
+        <h2>Custom Chat UI</h2>
+        <p>Build your own chat interface using the Talqo REST API and Socket.IO. Full control over every pixel.</p>
+        <ul class="features">
+          <li>Your own UI design</li>
+          <li>REST API for data (channels, messages)</li>
+          <li>WebSocket for real-time delivery</li>
+          <li>Works with any framework</li>
+        </ul>
+        <span class="cta">Open demo</span>
+      </a>
 
-      <div class="input-area">
-        <div class="input-row">
-          <input type="text" id="username" placeholder="Your name" value="Demo User">
-          <input type="text" id="messageInput" placeholder="Type a message..." disabled>
-          <button id="sendBtn" disabled>Send</button>
-        </div>
-      </div>
+      <a href="widget-chat/" class="card widget">
+        <div class="badge">Embed Widget</div>
+        <h2>Drop-in Widget</h2>
+        <p>Add chat or support to any website with a single script tag. No custom UI code needed.</p>
+        <ul class="features">
+          <li>One script tag to embed</li>
+          <li>Chat mode or Support mode</li>
+          <li>Pre-chat form for visitor details</li>
+          <li>Conversations in your dashboard</li>
+        </ul>
+        <span class="cta">Open demo</span>
+      </a>
     </div>
-  </div>
 
-  <!-- Widget Demo View -->
-  <div id="widgetView" style="display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;padding:40px;text-align:center;">
-    <div style="max-width:600px;">
-      <h2 style="font-size:28px;font-weight:700;color:#f0f6fc;margin-bottom:12px;">Talqo Embeddable Widget</h2>
-      <p style="color:#8b949e;font-size:16px;line-height:1.6;margin-bottom:32px;">
-        This is the drop-in chat widget that your customers can add to any website with a single script tag.
-        Click the chat bubble in the bottom-right corner to try it.
-      </p>
-
-      <div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;text-align:left;margin-bottom:24px;">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6e7681;margin-bottom:12px;">Embed Code</div>
-        <pre style="background:#0d1117;padding:16px;border-radius:8px;overflow-x:auto;font-size:13px;line-height:1.6;color:#c9d1d9;"><code>&lt;script src="https://talqo-api.onrender.com/widget.js"&gt;&lt;/script&gt;
-&lt;script&gt;
-  // Chat mode (explicit channel &amp; user)
-  Talqo.init({
-    apiKey: 'YOUR_API_KEY',
-    channelId: 'YOUR_CHANNEL_ID',
-    userId: 'visitor-123',
-    theme: 'light',
-    position: 'bottom-right'
-  })
-
-  // Support mode (auto guest ID &amp; channel)
-  Talqo.init({
-    apiKey: 'YOUR_API_KEY',
-    mode: 'support',
-    theme: 'light'
-  })
-&lt;/script&gt;</code></pre>
-      </div>
-
-      <div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:20px;margin-bottom:24px;">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6e7681;margin-bottom:12px;">Widget Mode</div>
-        <div style="display:flex;gap:16px;justify-content:center;align-items:center;">
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;color:#c9d1d9;">
-            <input type="radio" name="widgetMode" value="chat" checked
-              style="accent-color:#6366f1;width:16px;height:16px;cursor:pointer;">
-            Chat Mode
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;color:#c9d1d9;">
-            <input type="radio" name="widgetMode" value="support"
-              style="accent-color:#059669;width:16px;height:16px;cursor:pointer;">
-            Support Mode
-          </label>
-        </div>
-      </div>
-
-      <div style="display:flex;gap:12px;justify-content:center;">
-        <button onclick="launchWidget()" id="widgetLaunchBtn" style="padding:10px 24px;background:#6366f1;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Launch Widget</button>
-        <button onclick="destroyWidget()" id="widgetDestroyBtn" style="padding:10px 24px;background:#1e293b;color:#94a3b8;border:1px solid #30363d;border-radius:8px;font-size:14px;cursor:pointer;display:none;">Destroy Widget</button>
-      </div>
-      <p id="widgetStatus" style="margin-top:16px;font-size:13px;color:#6e7681;"></p>
+    <div class="footer">
+      <a href="https://talqo.live" target="_blank">talqo.live</a> ·
+      <a href="https://talqo.live/docs" target="_blank">API Docs</a> ·
+      <a href="https://github.com/kovaz01/talqo" target="_blank">GitHub</a>
     </div>
   </div>
-
-  <script>
-    const API_BASE = 'https://talqo-api.onrender.com';
-    const API_KEY = 'pk_live_LKlmr4swv3DQW6knTESTp3jXhk2GHrus';
-
-    let socket = null;
-    let currentChannelId = null;
-    let channels = [];
-    let onlineUsers = [];
-    // Stable per-tab identity so multiple tabs each count as a distinct online user.
-    const GUEST_ID = 'guest-' + Math.random().toString(36).slice(2, 8);
-
-    // DOM elements
-    const statusDot = document.getElementById('statusDot');
-    const statusText = document.getElementById('statusText');
-    const channelList = document.getElementById('channelList');
-    const channelTitle = document.getElementById('channelTitle');
-    const channelDesc = document.getElementById('channelDesc');
-    const messagesDiv = document.getElementById('messages');
-    const messageInput = document.getElementById('messageInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const usernameInput = document.getElementById('username');
-
-    // API helper
-    async function api(path, options = {}) {
-      const res = await fetch(`${API_BASE}${path}`, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': API_KEY,
-          ...(options.headers || {})
-        }
-      });
-      return res.json();
-    }
-
-    // Format timestamp
-    function formatTime(ts) {
-      const d = new Date(ts);
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-
-    // --- Presence (online users) ---
-    // Join payload carries identity so the server can track presence in public channels.
-    function joinPayload(channelId) {
-      return {
-        channelId,
-        userId: GUEST_ID,
-        displayName: usernameInput.value.trim() || 'Guest'
-      };
-    }
-
-    // Deterministic avatar color from a name.
-    function colorFor(name) {
-      let hash = 0;
-      for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-      return `hsl(${Math.abs(hash) % 360}, 55%, 45%)`;
-    }
-
-    function renderOnline() {
-      const bar = document.getElementById('onlineBar');
-      if (!onlineUsers.length) {
-        bar.style.display = 'none';
-        return;
-      }
-      bar.style.display = 'flex';
-      document.getElementById('onlineCount').textContent = `${onlineUsers.length} online`;
-
-      const avatars = document.getElementById('onlineAvatars');
-      avatars.replaceChildren();
-      onlineUsers.slice(0, 6).forEach(u => {
-        const name = u.displayName || u.userId;
-        const a = document.createElement('div');
-        a.className = 'online-avatar';
-        a.title = name;
-        a.textContent = name.charAt(0);
-        a.style.background = colorFor(name);
-        avatars.appendChild(a);
-      });
-      if (onlineUsers.length > 6) {
-        const more = document.createElement('div');
-        more.className = 'online-avatar more';
-        more.textContent = '+' + (onlineUsers.length - 6);
-        avatars.appendChild(more);
-      }
-    }
-
-    // Render a message (XSS-safe: uses textContent, not innerHTML)
-    function renderMessage(msg) {
-      const div = document.createElement('div');
-      div.className = 'message';
-
-      const isBot = msg.metadata?.isBot;
-      const author = isBot ? (msg.metadata.botName || 'Bot') : (msg.userId || 'Anonymous');
-
-      const metaDiv = document.createElement('div');
-      metaDiv.className = 'meta';
-
-      const authorSpan = document.createElement('span');
-      authorSpan.className = 'author';
-      authorSpan.textContent = author;
-      metaDiv.appendChild(authorSpan);
-
-      if (isBot) {
-        const badgeSpan = document.createElement('span');
-        badgeSpan.className = 'bot-badge';
-        badgeSpan.textContent = 'BOT';
-        metaDiv.appendChild(badgeSpan);
-      }
-
-      const timeSpan = document.createElement('span');
-      timeSpan.className = 'time';
-      timeSpan.textContent = formatTime(msg.createdAt);
-      metaDiv.appendChild(timeSpan);
-
-      const bodyDiv = document.createElement('div');
-      bodyDiv.className = 'body';
-      bodyDiv.textContent = msg.content;
-
-      div.appendChild(metaDiv);
-      div.appendChild(bodyDiv);
-      return div;
-    }
-
-    // Load channels
-    async function loadChannels() {
-      const res = await api('/api/v1/channels');
-      if (res.success) {
-        channels = res.data;
-        channelList.replaceChildren();
-        channels.forEach(ch => {
-          const li = document.createElement('li');
-          const hashSpan = document.createElement('span');
-          hashSpan.className = 'hash';
-          hashSpan.textContent = '#';
-          li.appendChild(hashSpan);
-          li.appendChild(document.createTextNode(' ' + ch.name));
-          li.dataset.id = ch.id;
-          li.dataset.name = ch.name;
-          li.dataset.desc = ch.description || '';
-          li.onclick = () => selectChannel(ch.id, ch.name, ch.description);
-          channelList.appendChild(li);
-        });
-        // Auto-select first channel
-        if (channels.length > 0) {
-          selectChannel(channels[0].id, channels[0].name, channels[0].description);
-        }
-      }
-    }
-
-    // Helper to create a system message element
-    function createSystemMsg(text) {
-      const el = document.createElement('div');
-      el.className = 'system-msg';
-      el.textContent = text;
-      return el;
-    }
-
-    // Load messages for a channel
-    async function loadMessages(channelId) {
-      messagesDiv.replaceChildren(createSystemMsg('Loading messages...'));
-      const res = await api(`/api/v1/channels/${channelId}/messages`);
-      messagesDiv.replaceChildren();
-      if (res.success && res.data.length > 0) {
-        res.data.forEach(msg => messagesDiv.appendChild(renderMessage(msg)));
-      } else {
-        messagesDiv.appendChild(createSystemMsg('No messages yet. Be the first to say something!'));
-      }
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    }
-
-    // Select channel
-    function selectChannel(id, name, desc) {
-      currentChannelId = id;
-      channelTitle.textContent = `# ${name}`;
-      channelDesc.textContent = desc || 'Chat channel';
-      messageInput.disabled = false;
-      sendBtn.disabled = false;
-
-      // Highlight active channel
-      document.querySelectorAll('.channel-list li').forEach(li => {
-        li.classList.toggle('active', li.dataset.id === id);
-      });
-
-      loadMessages(id);
-
-      // Reset presence for the newly selected channel
-      onlineUsers = [];
-      renderOnline();
-
-      // Join channel via socket (with identity so presence is tracked)
-      if (socket && socket.connected) {
-        socket.emit('join_channel', joinPayload(id));
-      }
-    }
-
-    // Send message
-    async function sendMessage() {
-      const content = messageInput.value.trim();
-      const username = usernameInput.value.trim() || 'Anonymous';
-      if (!content || !currentChannelId) return;
-
-      messageInput.value = '';
-      sendBtn.disabled = true;
-
-      try {
-        const res = await api(`/api/v1/channels/${currentChannelId}/messages`, {
-          method: 'POST',
-          body: JSON.stringify({
-            content,
-            userId: username.toLowerCase().replace(/\s+/g, '-'),
-            senderName: username
-          })
-        });
-
-        if (!res.success) {
-          console.error('Send failed:', res.error);
-        }
-      } catch (err) {
-        console.error('Send failed:', err);
-      }
-
-      sendBtn.disabled = false;
-      messageInput.focus();
-    }
-
-    // Connect socket
-    function connectSocket() {
-      socket = io(API_BASE, {
-        transports: ['websocket'],
-        auth: { apiKey: API_KEY }
-      });
-
-      socket.on('connect', () => {
-        statusDot.classList.add('connected');
-        statusText.textContent = 'Connected';
-        if (currentChannelId) {
-          socket.emit('join_channel', joinPayload(currentChannelId));
-        }
-      });
-
-      socket.on('disconnect', () => {
-        statusDot.classList.remove('connected');
-        statusText.textContent = 'Disconnected';
-      });
-
-      socket.on('message', (msg) => {
-        if (msg.channelId === currentChannelId) {
-          const placeholder = messagesDiv.querySelector('.system-msg');
-          if (placeholder) placeholder.remove();
-          messagesDiv.appendChild(renderMessage(msg));
-          messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }
-      });
-
-      // Presence: snapshot on join + incremental online/offline (public channels only)
-      socket.on('presence', ({ channelId, users }) => {
-        if (channelId !== currentChannelId) return;
-        onlineUsers = users || [];
-        renderOnline();
-      });
-
-      socket.on('user_online', ({ channelId, userId, displayName }) => {
-        if (channelId !== currentChannelId) return;
-        const existing = onlineUsers.find(u => u.userId === userId);
-        if (existing) existing.displayName = displayName;
-        else onlineUsers.push({ userId, displayName });
-        renderOnline();
-      });
-
-      socket.on('user_offline', ({ channelId, userId }) => {
-        if (channelId !== currentChannelId) return;
-        onlineUsers = onlineUsers.filter(u => u.userId !== userId);
-        renderOnline();
-      });
-
-      socket.on('connect_error', (err) => {
-        statusText.textContent = 'Connection error';
-        console.error('Socket error:', err);
-      });
-    }
-
-    // Event listeners
-    sendBtn.addEventListener('click', sendMessage);
-    messageInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') sendMessage();
-    });
-
-    // Updating your name re-broadcasts presence so others see the new display name
-    usernameInput.addEventListener('change', () => {
-      if (socket && socket.connected && currentChannelId) {
-        socket.emit('join_channel', joinPayload(currentChannelId));
-      }
-    });
-
-    // View toggle
-    function showView(view) {
-      const chatView = document.querySelector('.container');
-      const widgetViewEl = document.getElementById('widgetView');
-      const tabChat = document.getElementById('tabChat');
-      const tabWidget = document.getElementById('tabWidget');
-
-      if (view === 'widget') {
-        chatView.style.display = 'none';
-        widgetViewEl.style.display = 'flex';
-        tabChat.style.background = 'transparent';
-        tabChat.style.color = '#8b949e';
-        tabChat.style.fontWeight = 'normal';
-        tabWidget.style.background = '#1f2937';
-        tabWidget.style.color = '#f0f6fc';
-        tabWidget.style.fontWeight = '600';
-      } else {
-        chatView.style.display = 'flex';
-        widgetViewEl.style.display = 'none';
-        tabChat.style.background = '#1f2937';
-        tabChat.style.color = '#f0f6fc';
-        tabChat.style.fontWeight = '600';
-        tabWidget.style.background = 'transparent';
-        tabWidget.style.color = '#8b949e';
-        tabWidget.style.fontWeight = 'normal';
-      }
-    }
-
-    // Widget management
-    let widgetLoaded = false;
-    let widgetScriptLoaded = false;
-
-    function getSelectedWidgetMode() {
-      const checked = document.querySelector('input[name="widgetMode"]:checked');
-      return checked ? checked.value : 'chat';
-    }
-
-    function launchWidget() {
-      if (widgetLoaded) return;
-
-      function initWidget() {
-        if (!window.Talqo) return;
-
-        const mode = getSelectedWidgetMode();
-        const isSupportMode = mode === 'support';
-
-        const config = {
-          apiKey: API_KEY,
-          serverUrl: API_BASE,
-          theme: 'light',
-          position: 'bottom-right',
-          mode: mode
-        };
-
-        if (!isSupportMode && channels.length > 0) {
-          // Chat mode: use first available channel and explicit user
-          config.channelId = channels[0].id;
-          config.userId = 'widget-visitor';
-          config.userName = 'Widget Visitor';
-        }
-        // Support mode: no channelId (auto-created), no userId (auto-guest)
-
-        window.Talqo.init(config);
-        window.Talqo.open();
-        widgetLoaded = true;
-        document.getElementById('widgetLaunchBtn').style.display = 'none';
-        document.getElementById('widgetDestroyBtn').style.display = 'inline-block';
-
-        if (isSupportMode) {
-          document.getElementById('widgetStatus').textContent = 'Widget active in Support mode (guest)';
-        } else {
-          document.getElementById('widgetStatus').textContent = 'Widget active on #' + (channels.length > 0 ? channels[0].name : 'unknown');
-        }
-      }
-
-      if (widgetScriptLoaded) {
-        initWidget();
-      } else {
-        const script = document.createElement('script');
-        script.src = API_BASE + '/widget.js';
-        script.onload = function() {
-          widgetScriptLoaded = true;
-          initWidget();
-        };
-        document.body.appendChild(script);
-      }
-    }
-
-    function destroyWidget() {
-      if (window.Talqo) {
-        window.Talqo.destroy();
-        widgetLoaded = false;
-        document.getElementById('widgetLaunchBtn').style.display = 'inline-block';
-        document.getElementById('widgetDestroyBtn').style.display = 'none';
-        document.getElementById('widgetStatus').textContent = 'Widget destroyed';
-      }
-    }
-
-    // Initialize
-    loadChannels();
-    connectSocket();
-  </script>
 </body>
 </html>

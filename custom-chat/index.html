@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Talqo Custom Chat — API + WebSocket Example</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"
+          integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO"
+          crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div class="logo">T</div>
+    <h1>Talqo Custom Chat</h1>
+    <span class="badge">API + WebSocket</span>
+    <div class="status">
+      <div class="dot" id="statusDot"></div>
+      <span id="statusText">Disconnected</span>
+    </div>
+  </header>
+
+  <div class="container">
+    <aside class="sidebar">
+      <h3>Channels</h3>
+      <ul id="channelList"></ul>
+      <div class="info">
+        <p>This demo uses the Talqo <strong>REST API</strong> for data and <strong>Socket.IO</strong> for real-time messaging.</p>
+        <p>You build your own UI — Talqo handles delivery.</p>
+        <a href="https://talqo.live/docs" target="_blank">Read the docs →</a>
+      </div>
+    </aside>
+
+    <main class="chat">
+      <div class="chat-header">
+        <h2 id="channelTitle">Select a channel</h2>
+        <p id="channelDesc">Pick a channel from the sidebar to start chatting</p>
+      </div>
+
+      <div class="messages" id="messages">
+        <div class="empty">Select a channel to see messages</div>
+      </div>
+
+      <div class="input-bar">
+        <input type="text" id="username" placeholder="Your name" value="Demo User">
+        <input type="text" id="messageInput" placeholder="Type a message..." disabled>
+        <button id="sendBtn" disabled>Send</button>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
